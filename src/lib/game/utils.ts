@@ -41,6 +41,7 @@ export interface FormattedDepartement {
     picked: boolean;
     answerTime?: number;
     startQuestionTime?: number;
+    answer?: string;
 };
 
 export const getFormattedDepartements: () => FormattedDepartement[] = () => departements.map(departement => ({
@@ -49,3 +50,8 @@ export const getFormattedDepartements: () => FormattedDepartement[] = () => depa
     founded: false,
     picked: false
 }));
+
+export const getTotalTime = <T extends { answerTime?: number }>(data: T[]) =>
+    data
+        .filter(departement => departement.answerTime)
+        .reduce((acc, current) => acc + current.answerTime!, 0);
