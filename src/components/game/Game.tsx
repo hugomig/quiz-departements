@@ -148,7 +148,7 @@ export default function Game() {
 
   return (
     <div>
-      <div className="flex w-full justify-center h-screen">
+      <div className="w-full flex flex-col md:flex-row justify-center h-screen">
         <div className="flex flex-col gap-2 flex-1 justify-center items-center">
           <div className="grid grid-cols-[3fr_1fr] gap-2">
             <span className="text-sm">Question : </span>
@@ -167,7 +167,7 @@ export default function Game() {
         </div>
         <div className="flex-1 w-full flex flex-col justify-center">
           <Form {...form}>
-            <Card className="w-full mt-10 mb-10 h-[400px]">
+            <Card className="w-full m-[10px] md:m-0 h-[400px]">
               <CardHeader>
                 <div className="flex w-full justify-center">
                   <h1 className="text-xl font-bold">Quiz des départements</h1>
@@ -227,7 +227,7 @@ export default function Game() {
             </Card>
           </Form>
         </div>
-        <div className="flex flex-col gap-0.5 flex-1 justify-center items-center">
+        <div className="flex flex-col gap-0.5 flex-1 justify-center items-center overflow-auto">
           <div className="grid grid-cols-[1fr_3fr] gap-2">
             {_.orderBy(
               gameState.departements.filter(

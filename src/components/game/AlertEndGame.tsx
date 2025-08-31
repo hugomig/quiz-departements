@@ -32,13 +32,13 @@ export default function AlertEndGame({ gameState, open, setClose }: AlertEndGame
 
   const renderStats = (departements: FormattedDepartement[]) => {
     return (
-      <ScrollArea className="h-[200px] max-h-[300px] w-full rounded-md border mt-2">
+      <ScrollArea className="h-[200px] max-h-[300px] rounded-md border mt-2">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Code</TableHead>
               <TableHead>Nom</TableHead>
-              <TableHead>Temps de réponse</TableHead>
+              <TableHead className="hidden md:table-cell">Temps de réponse</TableHead>
               <TableHead>Réponse</TableHead>
             </TableRow>
           </TableHeader>
@@ -49,7 +49,7 @@ export default function AlertEndGame({ gameState, open, setClose }: AlertEndGame
                 <TableRow key={departement.code}>
                   <TableCell>{departement.code}</TableCell>
                   <TableCell>{departement.name}</TableCell>
-                  <TableCell>{departement.answerTime! / 1000}s</TableCell>
+                  <TableCell className="hidden md:table-cell">{departement.answerTime! / 1000}s</TableCell>
                   <TableCell>
                     {departement.founded ? <CircleCheck color="#4f8007"/> : <CircleX color="#d31745"/>}
                   </TableCell>
