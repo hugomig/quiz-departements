@@ -9,6 +9,9 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Form, FormField } from "../ui/form";
+import { ScrollArea } from "../ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { CircleCheck, CircleX } from "lucide-react";
 import {
   checkAnswer,
   countFounded,
@@ -24,19 +27,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import AlertEndGame from "./AlertEndGame";
 
 enum Step {
-  RELANCE,
   NOMBRE_GUESS,
   GUESS,
-  VERIFY,
 }
 
 export interface GameState {
   nbGuess: number;
   departements: FormattedDepartement[];
   goodAnswer?: FormattedDepartement;
+  lastGoodAnswer?: FormattedDepartement;
 }
 
-const CONTENT_START = <div>Combien de départements voulez vous deviner ?</div>;
 const STEP_LANCEMENT = Step.NOMBRE_GUESS;
 
 const FormSchema = z.object({
@@ -46,11 +47,10 @@ const FormSchema = z.object({
 
 export default function Game() {
   const initGameState = () => ({
-    nbGuess: 0,
     departements: getFormattedDepartements(),
+    nbGuess: 0,
   });
 
-  const [content, setContent] = useState(CONTENT_START);
   const [step, setStep] = useState<Step>(STEP_LANCEMENT);
   const [gameState, setGameState] = useState<GameState>(initGameState());
   const [showAlertEndGame, setShowAlertEndGame] = useState(false);
@@ -64,34 +64,42 @@ export default function Game() {
   });
 
   const handleInput = (data: z.infer<typeof FormSchema>) => {
-    if (!data.saisie.trim() && ![Step.NOMBRE_GUESS, Step.RELANCE].includes(step)) {
+    if (!data.saisie.trim() && step !== Step.NOMBRE_GUESS) {
       return;
     }
 
     switch (step) {
-      case Step.RELANCE:
       case Step.NOMBRE_GUESS:
-        const newGameState = {
-          ...(step === Step.RELANCE ? initGameState() : gameState),
-          nbGuess: data.nbGuess,
-        };
-        setGameState(newGameState);
-        guess(newGameState);
-        setStep(Step.VERIFY);
+        handleNbGuess(data.nbGuess);
         break;
       case Step.GUESS:
-        guess(gameState);
+        handleGuess(data.saisie);
         break;
-      case Step.VERIFY:
-        verify(data.saisie);
-        guess(gameState);
     }
-
-    form.setValue("saisie", "");
   };
 
-  const guess = (gameState: GameState) => {
-    const { nbGuess, departements, goodAnswer: lastGoodAnswer } = gameState;
+  const handleNbGuess = (nbGuess: number) => {
+    const newGameState = {
+      ...initGameState(),
+      nbGuess,
+    };
+
+    const { departements } = newGameState;
+    nextGuess(newGameState, departements, nbGuess);
+
+    setStep(Step.GUESS);
+  };
+
+  const handleGuess = (saisie: string) => {
+    const { departements, nbGuess, goodAnswer } = gameState;
+    if (goodAnswer) {
+      verify(goodAnswer, saisie);
+      nextGuess(gameState, departements, nbGuess, goodAnswer);
+    }
+    form.setValue("saisie", "");
+  }
+
+  const nextGuess = (gameState: GameState, departements: FormattedDepartement[], nbGuess: number, lastGoodAnswer?: FormattedDepartement) => {
     if (
       countPicked(departements) < departements.length &&
       countPicked(departements) < nbGuess
@@ -101,50 +109,101 @@ export default function Game() {
 
       const goodAnswer = pick(departements, randomIndex);
 
-      setContent(
-        <div>
-          {lastGoodAnswer && (
-            <React.Fragment>
-              {lastGoodAnswer.founded
-                  ? <div className="mb-6">Bonne réponse : {lastGoodAnswer.name}</div>
-                  : <div className="mb-6">
-                      <p>Mince alors, perdu! La bonne réponse était : <span className="font-bold">{lastGoodAnswer.name}</span></p>
-                      <p>Votre réponse : {lastGoodAnswer.answer}</p>
-                    </div>
-              }
-            </React.Fragment>
-          )}
-          <div>Quel est le département suivant : <span className="font-bold">{goodAnswer.code}</span></div>
-        </div>
-      );
       const startQuestionTime = Date.now();
-      setGameState((prev) => {
-        goodAnswer.startQuestionTime = startQuestionTime;
-        prev.goodAnswer = goodAnswer;
-        return prev;
+      goodAnswer.startQuestionTime = startQuestionTime;
+
+      setGameState({
+        ...gameState,
+        nbGuess,
+        goodAnswer,
+        lastGoodAnswer,
       });
     } else {
       setShowAlertEndGame(true);
-      setContent(
-        <div>
-          <div className="mb-4">Nouvelle partie ?</div>
-          {CONTENT_START}
-        </div>
-      );
-      setStep(Step.RELANCE);
+      setStep(Step.NOMBRE_GUESS);
     }
   };
 
-  const verify = (answer: string) => {
-    const { goodAnswer } = gameState;
-    if (goodAnswer && goodAnswer.startQuestionTime) {
-      const correct = checkAnswer(answer, goodAnswer);
+  const verify = (goodAnswer: FormattedDepartement, answer: string) => {
+    const correct = checkAnswer(answer, goodAnswer);
 
-      goodAnswer.answer = answer;
-      goodAnswer.founded = correct;
-      goodAnswer.answerTime = Date.now() - goodAnswer.startQuestionTime;
+    goodAnswer.answer = answer;
+    goodAnswer.founded = correct;
+    goodAnswer.answerTime = Date.now() - goodAnswer.startQuestionTime!;
+  };
+
+  const isGameStarted = () =>
+    countPicked(gameState.departements) > 0;
+
+  const getGameDisplay = (gameState: GameState) => {
+    const { goodAnswer, lastGoodAnswer } = gameState;
+
+    console.log(gameState);
+
+    switch (step) {
+      case Step.NOMBRE_GUESS:
+        return (
+          <div>
+            {isGameStarted() && <div className="mb-4">Nouvelle partie ?</div>}
+            {getNbGuessQuestion()}
+          </div>
+        );
+      case Step.GUESS:
+        return (
+          <div>
+            {lastGoodAnswer && (
+              <React.Fragment>
+                {lastGoodAnswer.founded
+                    ? <div className="mb-6">Bonne réponse : <span className="font-bold">{lastGoodAnswer.name}</span></div>
+                    : <div className="mb-6">
+                        <p>Mince alors, perdu! La bonne réponse était : <span className="font-bold">{lastGoodAnswer.name}</span></p>
+                        <p>Votre réponse : <span className="font-bold">{lastGoodAnswer.answer}</span></p>
+                      </div>
+                }
+              </React.Fragment>
+            )}
+            {goodAnswer && <div>Quel est le département suivant : <span className="font-bold">{goodAnswer.code}</span></div>}
+          </div>
+        );
+      default:
+        return "";
     }
   };
+
+  const renderStats = (departements: FormattedDepartement[]) => (
+    <ScrollArea className="h-[200px] max-h-[300px] md:h-[300px] md:max-h-[500px] min-w-[260px] max-w-[300px] rounded-md border mt-2">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="font-bold">Code</TableHead>
+            <TableHead className="font-bold">Nom</TableHead>
+            <TableHead className="font-bold">Réponse</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {departements
+            .filter(departement => departement.picked)
+            .map((departement) => (
+              <TableRow key={departement.code}>
+                <TableCell>{departement.code}</TableCell>
+                <TableCell>{departement.name}</TableCell>
+                <TableCell className="flex justify-center">
+                  {departement.founded ? <CircleCheck color="#4f8007"/> : <CircleX color="#d31745"/>}
+                </TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+    </ScrollArea>
+  );
+
+  const getNbGuessQuestion = () =>
+    <div>Combien de départements voulez vous deviner ?</div>;
+
+  const getAnswerTimeOrderedDepartements = () => _.orderBy(
+    gameState.departements.filter((departement) => departement.answerTime),
+    (departement) => departement.startQuestionTime
+  ).reverse();
 
   return (
     <div>
@@ -174,7 +233,7 @@ export default function Game() {
                 </div>
               </CardHeader>
               <CardContent className="w-full flex-1 flex flex-col justify-center m-2 text-center">
-                {content}
+                {getGameDisplay(gameState)}
               </CardContent>
               <CardFooter>
                 <form
@@ -182,7 +241,7 @@ export default function Game() {
                   className="w-full"
                 >
                   <div className="flex gap-2">
-                    {[Step.NOMBRE_GUESS, Step.RELANCE].includes(step)
+                    {step === Step.NOMBRE_GUESS
                       ? <FormField
                           control={form.control}
                           name="nbGuess"
@@ -228,22 +287,8 @@ export default function Game() {
           </Form>
         </div>
         <div className="flex flex-col gap-0.5 flex-1 justify-center items-center overflow-auto">
-          <div className="grid grid-cols-[1fr_3fr] gap-2">
-            {_.orderBy(
-              gameState.departements.filter(
-                (departement) => departement.answerTime
-              ),
-              (departement) => departement.startQuestionTime
-            ).map((departement, key) => (
-              <React.Fragment key={key}>
-                <span className={departement.founded ? "text-green-600" : "text-red-500"}>
-                  {departement.code}
-                </span>
-                <span className={departement.founded ? "text-green-600" : "text-red-500"}>
-                  {departement.name}
-                </span>
-              </React.Fragment>
-            ))}
+          <div>
+            {countAnswered(gameState.departements) > 0 && renderStats(getAnswerTimeOrderedDepartements())}
           </div>
         </div>
       </div>

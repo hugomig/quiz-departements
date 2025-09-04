@@ -72,8 +72,8 @@ export default function AlertEndGame({ gameState, open, setClose }: AlertEndGame
                sur les <span className="font-bold">{countPicked(gameState.departements)}</span>.
             </p>
             <p className="mt-1">
-              Temps total, {moment.utc(getTotalTime(gameState.departements)).minutes()} minutes
-               et {moment.utc(getTotalTime(gameState.departements)).seconds()} secondes.
+              Temps total <span className="font-bold">{moment.utc(getTotalTime(gameState.departements)).minutes()}</span> minutes
+               et <span className="font-bold">{moment.utc(getTotalTime(gameState.departements)).seconds()}</span> secondes.
             </p>
             <p className="mt-3">
               Voici le bilan de votre partie :
